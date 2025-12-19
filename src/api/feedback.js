@@ -117,6 +117,7 @@ function generateMockData(count = 62) {
   const deviceTypes = ['移动端', 'PC端']
   
   // 使用简单循环生成 count 条记录
+  //Math.random()：返回 [0, 1) 的随机数 Math.floor()：向下取整
   for (let i = 1; i <= count; i++) {
     const randomGroup = adGroups[Math.floor(Math.random() * adGroups.length)]
     const randomName = adNames[Math.floor(Math.random() * adNames.length)]
@@ -165,6 +166,7 @@ const api = axios.create({
 let cachedAllData = null
 
 // 根据筛选条件过滤数据（设备类型 / 时间范围 / 广告维度 / 落地页维度等）
+//对数组中的每个对象进行检查，如果符合条件则返回true保留该对象，否则返回false不保留该对象
 function filterData(data, filters) {
   return data.filter(item => {
     if (filters.deviceType && item.deviceType !== filters.deviceType) {
@@ -295,6 +297,7 @@ export const deleteFeedbackData = async (ids) => {
     if (!cachedAllData) {
       cachedAllData = generateMockData(62)
     }
+    //当前项的id在ids数组中，则返回false不保留该对象，否则返回true保留该对象
     cachedAllData = cachedAllData.filter(item => !ids.includes(item.id))
     return { success: true }
   } catch (error) {
