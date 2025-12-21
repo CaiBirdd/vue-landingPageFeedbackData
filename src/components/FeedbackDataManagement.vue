@@ -182,6 +182,7 @@ const allData = ref([])
 const selectedRows = ref([])
 // 记录当前排序状态（升序 / 降序 / 无）
 const sortOrder = ref(null)
+const sortProp = ref(null)
 
 // 查询筛选条件
 const filters = reactive({
@@ -236,6 +237,34 @@ const emailAndFeedback = computed(() => {
   return allData.value.filter(item => item.email !== '未提交' && item.feedback !== '未提交').length
 })
 
+// 对所有数据进行排序并重新分页
+const applySortAndPagination = () => {
+  let sortedData = [...allData.value]
+  
+  // 如果有排序条件，对全部数据排序
+  if (sortProp.value && sortOrder.value) {
+    sortedData = sortedData.sort((a, b) => {
+      let aVal = a[sortProp.value]
+      let bVal = b[sortProp.value]
+
+      if (sortProp.value === 'createTime') {
+        aVal = new Date(aVal)
+        bVal = new Date(bVal)
+      }
+
+      if (sortOrder.value === 'ascending') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+      }
+      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+    })
+  }
+  
+  // 根据排序后的数据重新分页
+  const start = (pagination.page - 1) * pagination.pageSize
+  const end = start + pagination.pageSize
+  tableData.value = sortedData.slice(start, end)
+}
+
 // 加载表格数据（带筛选 + 分页）
 const loadData = async () => {
   loading.value = true
@@ -252,8 +281,10 @@ const loadData = async () => {
       allData.value = response.allData
     }
     
-    tableData.value = response.data
     pagination.total = response.total
+    
+    // 加载数据后，如果有排序状态，应用排序并重新分页
+    applySortAndPagination()
   } catch (error) {
     ElMessage.error('加载数据失败')
   } finally {
@@ -386,45 +417,27 @@ const handleExport = () => {
   ElMessage.success('导出成功')
 }
 
-// 每页条数变化
-const handleSizeChange = (val) => {
-  pagination.pageSize = val
-  pagination.page = 1
-  loadData()
-}
-
-// 当前页码变化
-const handlePageChange = (val) => {
-  pagination.page = val
-  loadData()
-}
-
-// 列排序（目前仅对当前页数据排序，不影响全局统计）
+// 列排序（对所有数据进行排序）
 const handleSortChange = ({ prop, order }) => {
+  sortProp.value = prop
   sortOrder.value = order
+  
   if (!order || !prop) {
+    sortProp.value = null
+    sortOrder.value = null
+    // 取消排序时，重新加载数据以恢复原始顺序
+    loadData()
     return
   }
 
-  tableData.value = [...tableData.value].sort((a, b) => {
-    let aVal = a[prop]
-    let bVal = b[prop]
-
-    if (prop === 'createTime') {
-      aVal = new Date(aVal)
-      bVal = new Date(bVal)
-    }
-
-    if (order === 'ascending') {
-      return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
-    }
-    return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
-  })
+  // 对所有数据排序并重新分页
+  applySortAndPagination()
 }
 
 // 任意筛选条件变化时，重置到第一页并重新加载
 const handleFilterChange = () => {
   pagination.page = 1
+  // 筛选条件变化时，保持排序状态，重新加载数据后会应用排序
   loadData()
 }
 
